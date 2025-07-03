@@ -516,9 +516,448 @@ fn test_close_attendance_success() {
    assert_eq!(is_open_before, true, "Attendance should already be open");
 
    let close_result = dispatcher.close_attendance(bootcamp_id, 2_u8, 1_u8);
+   stop_cheat_caller_address(contract_address);
+
    assert_eq!(close_result, true, "Attendance should be close");
 
    let is_open_after = dispatcher.is_attendance_open(bootcamp_id, 2_u8, 1_u8);
    assert_eq!(is_open_after, false, "Attendance should already be closed");
-   stop_cheat_caller_address(contract_address);
+}
+
+#[test]
+fn test_close_multiple_attendance() {
+    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+    let contract_address = deploy_contract("BootTrack", owner);
+    
+    let dispatcher = IBootTrackDispatcher { contract_address };
+    start_cheat_caller_address(contract_address, owner);
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        14_u16    // assignment_max_score
+    );
+    let open_session1 = dispatcher.open_attendance(bootcamp_id, 1_u8, 0_u8, 60);
+    let open_session2 = dispatcher.open_attendance(bootcamp_id, 1_u8, 1_u8, 60);
+    let open_session3 = dispatcher.open_attendance(bootcamp_id, 2_u8, 0_u8, 60);
+
+    assert_eq!(open_session1, true, "Week 1 session 1 attendance should be open");
+    assert_eq!(open_session2, true, "Week 1 session 2 attendance should be open");
+    assert_eq!(open_session3, true, "Week 2 session 1 attendance should be open");
+
+    let is_open_before1 = dispatcher.is_attendance_open(bootcamp_id, 1_u8, 0_u8); 
+    let is_open_before2 = dispatcher.is_attendance_open(bootcamp_id, 1_u8, 1_u8); 
+    let is_open_before3 = dispatcher.is_attendance_open(bootcamp_id, 2_u8, 0_u8);
+
+    assert_eq!(is_open_before1, true, "Week 1 session 1 attendance is opened before");
+    assert_eq!(is_open_before2, true, "Week 1 session 2 attendance is opened before");
+    assert_eq!(is_open_before3, true, "Week 2 session 1 attendance is opened before");
+
+    let close_session1 = dispatcher.close_attendance(bootcamp_id, 1_u8, 0_u8);
+    let close_session2 = dispatcher.close_attendance(bootcamp_id, 1_u8, 1_u8);
+    let close_session3 = dispatcher.close_attendance(bootcamp_id, 2_u8, 0_u8);
+    stop_cheat_caller_address(contract_address);
+
+    assert_eq!(close_session1, true, "Week 1 session 1 attendance should be closed");
+    assert_eq!(close_session2, true, "Week 1 session 2 attendance should be closed");
+    assert_eq!(close_session3, true, "Week 2 session 1 attendance should be closed");
+
+    let is_open_after1 = dispatcher.is_attendance_open(bootcamp_id, 1_u8, 0_u8);
+    let is_open_after2 = dispatcher.is_attendance_open(bootcamp_id, 1_u8, 1_u8);
+    let is_open_after3 = dispatcher.is_attendance_open(bootcamp_id, 2_u8, 0_u8);
+
+    assert_eq!(is_open_after1, false, "Week 1 session 1 attendance must be close");
+    assert_eq!(is_open_after2, false, "Week 1 session 2 attendance must be close");
+    assert_eq!(is_open_after3, false, "Week 2 session 1 attendance must be close");
+}
+
+#[test]
+#[should_panic(expect: ("Only the organizer can close attendance"))]
+fn test_close_attendance_by_non_organizer() {
+    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+    let non_owner: ContractAddress = 0x456_felt252.try_into().unwrap();
+    let contract_address = deploy_contract("BootTrack", owner);
+
+    let dispatcher = IBootTrackDispatcher { contract_address };
+
+    start_cheat_caller_address(contract_address, owner);
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        14_u16    // assignment_max_score
+    );
+    dispatcher.open_attendance(bootcamp_id, 1_u8, 0_u8, 60);
+    let is_open = dispatcher.is_attendance_open(bootcamp_id, 1_u8, 0_u8);
+    stop_cheat_caller_address(contract_address);
+
+    assert_eq!(is_open, true, "Attendance should be open");
+
+    start_cheat_caller_address(contract_address, non_owner);
+    dispatcher.close_attendance(bootcamp_id, 1_u8, 0_u8);
+    stop_cheat_caller_address(contract_address);
+}
+
+#[test]
+#[should_panic(expect: ("Attendance has already been closed"))]
+fn test_close_attendance_already_closed() {
+    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+    let contract_address = deploy_contract("BootTrack", owner);
+
+    let dispatcher = IBootTrackDispatcher { contract_address };
+    start_cheat_caller_address(contract_address, owner);
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        14_u16    // assignment_max_score
+    );
+    dispatcher.open_attendance(bootcamp_id, 1_u8, 0_u8, 60);
+    dispatcher.close_attendance(bootcamp_id, 1_u8, 0_u8);
+    dispatcher.close_attendance(bootcamp_id, 1_u8, 0_8);
+    stop_cheat_caller_address(contract_address);
+}
+
+#[test]
+fn test_grade_assignment_single_attendee() {
+    let owner:ContractAddress = 0x123_felt252.try_into().unwrap();
+    let contract_address = deploy_contract("BootTrack", owner);
+
+    let dispatcher = IBootTrackDispatcher { contract_address };
+
+    start_cheat_caller_address(contract_address, owner);
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        14_u16    // assignment_max_score
+    );
+
+    let mut attendees: Array<ContractAddress> = ArrayTrait::new();
+    let attendee: ContractAddress = 0x345_felt252.try_into().unwrap();
+    attendees.append(attendee);
+
+    dispatcher.register_attendees(bootcamp_id, attendees);
+
+    let tutor = 0x567_felt252.try_into().unwrap();
+
+    dispatcher.add_tutor(bootcamp_id, tutor);
+    stop_cheat_caller_address(contract_address);
+
+    start_cheat_caller_address(contract_address, tutor);
+    let result = dispatcher.grade_assignment(bootcamp_id, 1_u8, attendee, 8_u16);
+    stop_cheat_caller_address(contract_address);
+
+    assert_eq!(result, true, "Assignment should be graded");
+
+    let (_, total_assignment_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee);
+
+    assert_eq!(total_assignment_score, 8, "Assignment score must be 8");
+}
+
+#[test]
+fn test_grade_assignment_single_attendee_multiple() {
+    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+    let contract_address = deploy_contract("BootTrack", owner);
+
+    let dispatcher = IBootTrackDispatcher { contract_address };
+
+    start_cheat_caller_address(contract_address, owner);
+    let mut attendees: Array<ContractAddress> = ArrayTrait::new();
+    let attendee: ContractAddress = 0x345_felt252.try_into().unwrap();
+    attendees.append(attendee);
+    
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        14_u16    // assignment_max_score
+    );
+
+    dispatcher.register_attendees(bootcamp_id, attendees);
+
+    let tutor: ContractAddress = 0x567_felt252.try_into().unwrap();
+    dispatcher.add_tutor(bootcamp_id, tutor);
+    stop_cheat_caller_address(contract_address);
+
+    start_cheat_caller_address(contract_address, tutor);
+    let (_, initial_assignment_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee);
+    assert_eq!(initial_assignment_score, 0, "Initial score should be zero");
+    dispatcher.grade_assignment(bootcamp_id, 1_u8, attendee, 7_u16);
+    let (_, current_assignment_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee);
+    assert_eq!(current_assignment_score, 7);
+    dispatcher.grade_assignment(bootcamp_id, 2_u8, attendee, 8_u16);
+
+    let (_, total_assignment_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee);
+    assert_eq!(total_assignment_score, 15, "Total score should be 15");
+}
+
+#[test]
+#[should_panic(expect: ("Only the tutor or the organizer can grade assignment"))]
+fn test_grade_assignment_non_tutor_or_organizer() {
+    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+    let tutor: ContractAddress = 0x345_felt252.try_into().unwrap();
+    let non_organizer_or_tutor: ContractAddress = 0x567.try_into().unwrap();
+
+    let contract_address = deploy_contract("BootTrack", owner);
+
+    let dispatcher = IBootTrackDispatcher { contract_address };
+
+    let mut attendees: Array<ContractAddress> = ArrayTrait::new();
+    let attendee: ContractAddress = 0x789.try_into().unwrap();
+    attendees.append(attendee);
+
+    start_cheat_caller_address(contract_address, owner);
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        14_u16    // assignment_max_score
+    );
+
+    dispatcher.register_attendees(bootcamp_id, attendees);
+    
+    dispatcher.add_tutor(bootcamp_id, tutor);
+
+    stop_cheat_caller_address(contract_address);
+    let (_, initial_assignment_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee);
+    assert_eq!(initial_assignment_score, 0, "Initial score should be zero");
+
+    start_cheat_caller_address(contract_address, tutor);
+    dispatcher.grade_assignment(bootcamp_id, 2_u8, attendee, 8_u16);
+    stop_cheat_caller_address(contract_address);
+
+    let (_, current_assignment_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee);
+    assert_eq!(current_assignment_score, 8_u16);
+
+    stop_cheat_caller_address(contract_address);
+
+    start_cheat_caller_address(contract_address, non_organizer_or_tutor);
+    dispatcher.grade_assignment(bootcamp_id, 2_u8, attendee, 8_u16); //Should panic
+}
+
+#[test]
+#[should_panic(expect: ("Attendee is not registered"))]
+fn test_grade_assignment_attendee_not_registered() {
+    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+    let tutor: ContractAddress = 0x345_felt252.try_into().unwrap();
+    let attendee: ContractAddress = 0x567_felt252.try_into().unwrap();
+    let contract_address = deploy_contract("BootTrack", owner);
+
+    let dispatcher = IBootTrackDispatcher { contract_address };
+
+    start_cheat_caller_address(contract_address, owner);
+
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        14_u16    // assignment_max_score
+    );
+
+    dispatcher.add_tutor(bootcamp_id, tutor);
+    stop_cheat_caller_address(contract_address);
+
+    start_cheat_caller_address(contract_address, tutor);
+    dispatcher.grade_assignment(bootcamp_id, 1_u8, attendee, 8_u16); //should panic
+    stop_cheat_caller_address(contract_address);
+}
+
+#[test]
+#[should_panic(expect: ("Score exceeds the maximum allowed"))]
+fn test_grade_assignment_score_exceeded_maximum() {
+    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+    let tutor: ContractAddress = 0x345_felt252.try_into().unwrap();
+
+    let contract_address = deploy_contract("BootTrack", owner);
+
+    let dispatcher = IBootTrackDispatcher { contract_address };
+
+    let mut attendees: Array<ContractAddress> = ArrayTrait::new();
+    let attendee: ContractAddress = 0x789.try_into().unwrap();
+    attendees.append(attendee);
+
+    start_cheat_caller_address(contract_address, owner);
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        20_u16    // assignment_max_score
+    );
+
+    dispatcher.register_attendees(bootcamp_id, attendees);
+    
+    dispatcher.add_tutor(bootcamp_id, tutor);
+    stop_cheat_caller_address(contract_address);
+
+    start_cheat_caller_address(contract_address, tutor);
+    dispatcher.grade_assignment(bootcamp_id, 2_u8, attendee, 21_u16); //expect to panic
+    stop_cheat_caller_address(contract_address);
+}
+
+#[test]
+#[should_panic(expect: ("Invalid week"))]
+fn test_grade_assignment_invalid_week() {
+    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+    let tutor: ContractAddress = 0x345_felt252.try_into().unwrap();
+
+    let contract_address = deploy_contract("BootTrack", owner);
+
+    let dispatcher = IBootTrackDispatcher { contract_address };
+
+    let mut attendees: Array<ContractAddress> = ArrayTrait::new();
+    let attendee: ContractAddress = 0x789.try_into().unwrap();
+    attendees.append(attendee);
+
+    start_cheat_caller_address(contract_address, owner);
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        20_u16    // assignment_max_score
+    );
+
+    dispatcher.register_attendees(bootcamp_id, attendees);
+    
+    dispatcher.add_tutor(bootcamp_id, tutor);
+    stop_cheat_caller_address(contract_address);
+
+    start_cheat_caller_address(contract_address, tutor);
+    dispatcher.grade_assignment(bootcamp_id, 11_u8, attendee, 12_u16); //expect to panic
+    stop_cheat_caller_address(contract_address);
+}
+
+#[test]
+fn test_grade_assignment_regarde_score() {
+    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+    let tutor: ContractAddress = 0x345_felt252.try_into().unwrap();
+
+    let contract_address = deploy_contract("BootTrack", owner);
+
+    let dispatcher = IBootTrackDispatcher { contract_address };
+
+    let mut attendees: Array<ContractAddress> = ArrayTrait::new();
+    let attendee: ContractAddress = 0x789.try_into().unwrap();
+    attendees.append(attendee);
+
+    start_cheat_caller_address(contract_address, owner);
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        20_u16    // assignment_max_score
+    );
+
+    dispatcher.register_attendees(bootcamp_id, attendees);
+    
+    dispatcher.add_tutor(bootcamp_id, tutor);
+    stop_cheat_caller_address(contract_address);
+
+    start_cheat_caller_address(contract_address, tutor);
+    let (_, before_grade_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee);
+    assert_eq!(before_grade_score, 0, "Score must be zero");
+    dispatcher.grade_assignment(bootcamp_id, 2_u8, attendee, 6_u16);
+    let (_, after_grade_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee);
+    assert_eq!(after_grade_score, 6, "Score must be 6");
+    dispatcher.grade_assignment(bootcamp_id, 2_u8, attendee, 8_u16);
+    let (_, updated_grade_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee);
+    assert_eq!(updated_grade_score, 8, "Score must be 6");
+    stop_cheat_caller_address(contract_address);
+}
+
+#[test]
+fn test_batch_grade_assignments_success() {
+    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+    let tutor: ContractAddress = 0x789_felt252.try_into().unwrap();
+
+    let contract_address = deploy_contract("BootTrack", owner);
+    let dispatcher = IBootTrackDispatcher { contract_address };
+
+    let mut attendees: Array<ContractAddress> = ArrayTrait::new();
+
+    let attendee1: ContractAddress = 0x345_felt252.try_into().unwrap();
+    let attendee2: ContractAddress = 0x456_felt252.try_into().unwrap();
+    let attendee3: ContractAddress = 0x567_felt252.try_into().unwrap();
+
+    attendees.append(attendee1);
+    attendees.append(attendee2);
+    attendees.append(attendee3);
+
+    start_cheat_caller_address(contract_address, owner);
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        20_u16    // assignment_max_score
+    );
+
+    dispatcher.register_attendees(bootcamp_id, attendees.clone());
+
+    dispatcher.add_tutor(bootcamp_id, tutor);
+    stop_cheat_caller_address(contract_address);
+
+    start_cheat_caller_address(contract_address, tutor);
+    let mut batch_attendees: Array<ContractAddress> = ArrayTrait::new();
+    batch_attendees.append(attendee1);
+    batch_attendees.append(attendee2);
+    batch_attendees.append(attendee3);
+
+    let mut scores: Array<u16> = ArrayTrait::new();
+    scores.append(8);
+    scores.append(6);
+    scores.append(10);
+
+    let result = dispatcher.batch_grade_assignments(bootcamp_id, 2_u8, attendees, scores);
+    stop_cheat_caller_address(contract_address);
+
+    assert_eq!(result, true, "Result must be true");
+
+    let (_, attendee1_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee1);
+    let (_, attendee2_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee2);
+    let (_, attendee3_score, _, _) = dispatcher.get_attendee_stats(bootcamp_id, attendee3);
+
+    assert_eq!(attendee1_score, 8, "Attendee 1 score must be 8");
+    assert_eq!(attendee2_score, 6, "Attendee 1 score must be 6");
+    assert_eq!(attendee3_score, 10, "Attendee 1 score must be 10");
+}
+
+#[test]
+#[should_panic(expect: ("Arrays length mismatch"))]
+fn test_batch_grade_assignment_attendee_score_mismatch() {
+    let owner: ContractAddress = 0x123.try_into().unwrap();
+    let tutor: ContractAddress = 0x789.try_into().unwrap();
+    let contract_address = deploy_contract("BootTrack", owner);
+
+    let dispatcher = IBootTrackDispatcher { contract_address };
+
+    start_cheat_caller_address(contract_address, owner);
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        10_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        20_u16    // assignment_max_score
+    );
+
+    let mut attendees: Array<ContractAddress> = ArrayTrait::new();
+    let attendee1: ContractAddress = 0x345_felt252.try_into().unwrap();
+    let attendee2: ContractAddress = 0x456_felt252.try_into().unwrap();
+    
+    attendees.append(attendee1);
+    attendees.append(attendee2);
+
+    dispatcher.register_attendees(bootcamp_id, attendees.clone());
+
+    dispatcher.add_tutor(bootcamp_id, tutor);
+
+    stop_cheat_caller_address(contract_address);
+
+    start_cheat_caller_address(contract_address, tutor);
+    let mut batch_attendees: Array<ContractAddress> = ArrayTrait::new();
+    batch_attendees.append(attendee1);
+    batch_attendees.append(attendee2);
+
+    let mut scores: Array<u16> = ArrayTrait::new();
+    scores.append(9);
+
+    dispatcher.batch_grade_assignments(bootcamp_id, 2_u8, attendees, scores); //should panic
 }

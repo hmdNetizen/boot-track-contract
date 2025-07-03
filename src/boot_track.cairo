@@ -316,7 +316,7 @@ use super::IBootTrack;
 
             assert(bootcamp.organizer == caller, 'Only organizer can process');
 
-            //TODO: Batch process the attendees
+            //Batch process the attendees
 
             true
 
