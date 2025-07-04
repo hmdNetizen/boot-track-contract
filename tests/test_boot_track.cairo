@@ -65,7 +65,7 @@ fn test_constructor() {
 
 // This just tests the assertion used in the create_bootcamp function. Therefore I'm expecting it to panic if the caller isn't the owner.
 #[test]
-#[should_panic(expected: "Only owner can create bootcamp")]
+#[should_panic(expected: 'Only owner can create bootcamp')]
 fn test_constructor_non_owner() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let non_owner: ContractAddress = 0x456_felt252.try_into().unwrap();
@@ -371,7 +371,7 @@ fn test_mark_attendance_multiple_attendees() {
 }
 
 #[test]
-#[should_panic(expect: ("Not registered"))]
+#[should_panic(expect: ('Not registered'))]
 fn test_mark_attendance_unregistered_attendee() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let unregistered_attendee: ContractAddress = 0x456_felt252.try_into().unwrap();
@@ -397,7 +397,7 @@ fn test_mark_attendance_unregistered_attendee() {
 }
 
 #[test]
-#[should_panic(expect: ("Attendance not open"))]
+#[should_panic(expect: ("'Attendance not open'"))]
 fn test_mark_attendance_session_not_open() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let contract_address = deploy_contract("BootTrack", owner);
@@ -426,7 +426,7 @@ fn test_mark_attendance_session_not_open() {
 }
 
 #[test]
-#[should_panic(expect: ("Attendance timeframe elapsed"))]
+#[should_panic(expect: ('Attendance timeframe elapsed'))]
 fn test_mark_attendance_time_end() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let contract_address = deploy_contract("BootTrack", owner);
@@ -464,7 +464,7 @@ fn test_mark_attendance_time_end() {
 }
 
 #[test]
-#[should_panic(expect: ("Already marked attendance"))]
+#[should_panic(expect: ('Already marked attendance'))]
 fn test_mark_attendance_already_marked() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let contract_address = deploy_contract("BootTrack", owner);
@@ -573,7 +573,7 @@ fn test_close_multiple_attendance() {
 }
 
 #[test]
-#[should_panic(expect: ("Only the organizer can close attendance"))]
+#[should_panic(expect: ('Only the organizer can close'))]
 fn test_close_attendance_by_non_organizer() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let non_owner: ContractAddress = 0x456_felt252.try_into().unwrap();
@@ -600,7 +600,7 @@ fn test_close_attendance_by_non_organizer() {
 }
 
 #[test]
-#[should_panic(expect: ("Attendance has already been closed"))]
+#[should_panic(expect: ('Attendance already closed'))]
 fn test_close_attendance_already_closed() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let contract_address = deploy_contract("BootTrack", owner);
@@ -694,7 +694,7 @@ fn test_grade_assignment_single_attendee_multiple() {
 }
 
 #[test]
-#[should_panic(expect: ("Only the tutor or the organizer can grade assignment"))]
+#[should_panic(expect: ('Only tutor or organizer allowed'))]
 fn test_grade_assignment_non_tutor_or_organizer() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let tutor: ContractAddress = 0x345_felt252.try_into().unwrap();
@@ -738,7 +738,7 @@ fn test_grade_assignment_non_tutor_or_organizer() {
 }
 
 #[test]
-#[should_panic(expect: ("Attendee is not registered"))]
+#[should_panic(expect: ('Attendee is not registered'))]
 fn test_grade_assignment_attendee_not_registered() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let tutor: ContractAddress = 0x345_felt252.try_into().unwrap();
@@ -765,7 +765,7 @@ fn test_grade_assignment_attendee_not_registered() {
 }
 
 #[test]
-#[should_panic(expect: ("Score exceeds the maximum allowed"))]
+#[should_panic(expect: ('Score exceeds the maximum'))]
 fn test_grade_assignment_score_exceeded_maximum() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let tutor: ContractAddress = 0x345_felt252.try_into().unwrap();
@@ -797,7 +797,7 @@ fn test_grade_assignment_score_exceeded_maximum() {
 }
 
 #[test]
-#[should_panic(expect: ("Invalid week"))]
+#[should_panic(expect: ('Invalid week'))]
 fn test_grade_assignment_invalid_week() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let tutor: ContractAddress = 0x345_felt252.try_into().unwrap();
@@ -923,7 +923,7 @@ fn test_batch_grade_assignments_success() {
 }
 
 #[test]
-#[should_panic(expect: ("Arrays length mismatch"))]
+#[should_panic(expect: ('Arrays length mismatch'))]
 fn test_batch_grade_assignment_attendee_score_mismatch() {
     let owner: ContractAddress = 0x123.try_into().unwrap();
     let tutor: ContractAddress = 0x789.try_into().unwrap();
@@ -1239,7 +1239,7 @@ fn test_process_graduation_distinction_status() {
 }
 
 #[test]
-#[should_panic(expect: ("Attendee is not registered"))]
+#[should_panic(expect: ('Attendee is not registered'))]
 fn test_process_graduation_attendee_not_registered() {
     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
     let contract_address = deploy_contract("BootTrack", owner);

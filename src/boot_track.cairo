@@ -61,7 +61,7 @@ use super::IBootTrack;
             let caller = get_caller_address();
             let bootcamp_id = self.next_bootcamp_id.read();
 
-            assert_eq!(caller, self.owner.read(), "Only owner can create bootcamp");
+            assert(caller == self.owner.read(), 'Only owner can create bootcamp');
             
             let bootcamp = Bootcamp {
                 name: name.clone(),
@@ -90,9 +90,9 @@ use super::IBootTrack;
             let caller = get_caller_address();
             let mut bootcamp = self.bootcamps.entry(bootcamp_id).read();
 
-            assert_eq!(bootcamp.organizer, caller, "Only organizer can register");
+            assert(bootcamp.organizer == caller, 'Only organizer can register');
             assert(bootcamp.is_active, 'Bootcamp not active');
-            assert_ne!(attendees.len(), 0, "Attendees data cannot be empty");
+            assert(attendees.len() != 0, 'Attendees data cannot be empty');
 
             while !attendees.is_empty() {
                 let attendee = attendees.pop_front().unwrap();
@@ -160,17 +160,17 @@ use super::IBootTrack;
             let mut session = self.attendance_sessions.entry((bootcamp_id, week, session_id)).read();
             let attendee_record = self.attendee_records.entry((bootcamp_id, caller)).read();
 
-            assert_eq!(attendee_record.is_registered, true, "Not registered");
-            assert_eq!(session.is_open, true, "Attendance not open");
+            assert(attendee_record.is_registered, 'Not registered');
+            assert(session.is_open, 'Attendance not open');
 
             // Check if attendance window is still valid
             let current_time = get_block_timestamp();
             let end_time = session.opened_at + (session.duration_minutes.into() * 60);
-            assert_le!(current_time, end_time, "Attendance timeframe elapsed");
+            assert(current_time <= end_time, 'Attendance timeframe elapsed');
 
             // Check if already marked
             let already_attended = self.individual_attendance.entry((bootcamp_id, week, session_id, caller)).read();
-            assert_eq!(already_attended, false, "Already marked attendance");
+            assert(!already_attended, 'Already marked attendance');
 
             // Mark attendance
             self.individual_attendance.entry((bootcamp_id, week, session_id, caller)).write(true);
@@ -199,8 +199,8 @@ use super::IBootTrack;
             let bootcamps = self.bootcamps.entry(bootcamp_id).read();
             let mut session = self.attendance_sessions.entry((bootcamp_id, week, session_id)).read();
 
-            assert_eq!(caller, bootcamps.organizer, "Only the organizer can close attendance");
-            assert_eq!(session.is_open, true, "Attendance has already been closed");
+            assert(caller == bootcamps.organizer, 'Only the organizer can close');
+            assert(session.is_open, 'Attendance already closed');
 
             session.is_open = false;
             self.attendance_sessions.entry((bootcamp_id, week, session_id)).write(session);
@@ -221,10 +221,10 @@ use super::IBootTrack;
             let is_tutor = self.tutors.entry((bootcamp_id, caller)).read();
             let attendee_record = self.attendee_records.entry((bootcamp_id, attendee)).read();
 
-            assert!(is_tutor || bootcamp.organizer == caller, "Only the tutor or the organizer can grade assignment");
-            assert!(attendee_record.is_registered, "Attendee is not registered");
-            assert_le!(score, bootcamp.assignment_max_score, "Score exceeds the maximum allowed");
-            assert_le!(week, bootcamp.total_weeks, "Invalid week");
+            assert(is_tutor || bootcamp.organizer == caller, 'Only tutor or organizer allowed');
+            assert(attendee_record.is_registered, 'Attendee is not registered');
+            assert(score <= bootcamp.assignment_max_score, 'Score exceeds the maximum');
+            assert(week <= bootcamp.total_weeks, 'Invalid week');
 
             // Check if attendee has already been graded
             let existing_grade = self.assignment_grades.entry((bootcamp_id, week, attendee)).read();
@@ -257,7 +257,7 @@ use super::IBootTrack;
         }
 
         fn batch_grade_assignments(ref self: ContractState, bootcamp_id: u256, week: u8, mut attendees: Array<ContractAddress>, mut scores: Array<u16>) -> bool {
-            assert_eq!(attendees.len(), scores.len(), "Arrays length mismatch");
+            assert(attendees.len() == scores.len(), 'Arrays length mismatch');
 
             while !attendees.is_empty() {
                 let attendee = attendees.pop_front().unwrap();
@@ -273,7 +273,7 @@ use super::IBootTrack;
             let bootcamp = self.bootcamps.entry(bootcamp_id).read();
             let mut attendee_record = self.attendee_records.entry((bootcamp_id, attendee)).read();
 
-            assert_eq!(attendee_record.is_registered, true, "Attendee is not registered");
+            assert(attendee_record.is_registered, 'Attendee is not registered');
 
             // Calculate total possible sessions
             let total_sessions = bootcamp.total_weeks * bootcamp.sessions_per_week;
@@ -315,7 +315,7 @@ use super::IBootTrack;
             let caller = get_caller_address();
             let bootcamp = self.bootcamps.entry(bootcamp_id).read();
 
-            assert_eq!(bootcamp.organizer, caller, "Only organizer can process graduation");
+            assert(bootcamp.organizer == caller, 'Only organizer can process this');
 
             //Batch process the attendees
             while !attendees.is_empty() {
