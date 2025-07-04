@@ -273,13 +273,14 @@ use super::IBootTrack;
             let bootcamp = self.bootcamps.entry(bootcamp_id).read();
             let mut attendee_record = self.attendee_records.entry((bootcamp_id, attendee)).read();
 
-            assert(attendee_record.is_registered, 'Attendee is not registered');
+            assert_eq!(attendee_record.is_registered, true, "Attendee is not registered");
 
             // Calculate total possible sessions
             let total_sessions = bootcamp.total_weeks * bootcamp.sessions_per_week;
 
             // Calculate attendance percentage
-            let attendance_percentage: u8 = (attendee_record.attendance_count.into() * 100) / total_sessions.into();
+            // let attendance_percentage: u8 = (attendee_record.attendance_count.into() * 100) / total_sessions.into();
+            let attendance_percentage: u8 = ((attendee_record.attendance_count.into() * 100_u32) / total_sessions.into()).try_into().unwrap();
 
             // Calculate max possible score
             let max_possible_score: u16 = bootcamp.total_weeks.into() * bootcamp.assignment_max_score.into();
@@ -290,9 +291,9 @@ use super::IBootTrack;
             // Use percentage-based thresholds
             let graduation_status = if attendance_percentage < 25 {
                 0 // None
-            } else if attendance_percentage >= 50 && score_percentage >= 50 { // 70% of max score
+            } else if attendance_percentage >= 50 && score_percentage >= 80 { // 70% of max score
                 3 // Distinction
-            } else if attendance_percentage >= 50 && score_percentage >= 70 { // 50% of max score
+            } else if attendance_percentage >= 50 && score_percentage >= 50 { // 50% of max score
                 2 // Graduate
             } else {
                 1 // Attendee
@@ -328,7 +329,7 @@ use super::IBootTrack;
 
             let total_sessions = bootcamp.total_weeks * bootcamp.sessions_per_week;
             let attendance_rate = if total_sessions > 0 {
-                (record.attendance_count * 100 / total_sessions)
+                ((record.attendance_count.into() * 100_u32) / total_sessions.into()).try_into().unwrap()
             } else {
                 0
             };
