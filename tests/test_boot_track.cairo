@@ -1264,3 +1264,39 @@ fn test_process_graduation_attendee_not_registered() {
     dispatcher.process_graduation(bootcamp_id, attendee1); //This should go through
     dispatcher.process_graduation(bootcamp_id, attendee2); //This should panic
 }
+
+#[test]
+#[should_panic(expect: ("Only organizer can process graduation"))]
+fn test_process_all_graduation_only_caller() {
+    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+    let non_organizer: ContractAddress = 0x890_felt252.try_into().unwrap();
+    let contract_address = deploy_contract("BootTrack", owner);
+
+    let dispatcher = IBootTrackDispatcher { contract_address };
+
+    let mut attendees: Array<ContractAddress> = ArrayTrait::new();
+    let attendee1: ContractAddress = 0x345_felt252.try_into().unwrap();
+    let attendee2: ContractAddress = 0x567_felt252.try_into().unwrap();
+    let attendee3: ContractAddress = 0x678_felt252.try_into().unwrap();
+
+    attendees.append(attendee1);
+    attendees.append(attendee2);
+    attendees.append(attendee3);
+
+    start_cheat_caller_address(contract_address, owner);
+
+    let bootcamp_id = dispatcher.create_bootcamp("Cairo Bootcamp IV",
+        1_u32,      //num_of_attendees
+        4_u8,      // total_weeks
+        2_u8,      // sessions_per_week
+        10_u16    // assignment_max_score
+    );
+
+    dispatcher.process_all_graduations(bootcamp_id, attendees.clone()); // This should not panic
+    stop_cheat_caller_address(contract_address);
+
+    start_cheat_caller_address(contract_address, non_organizer);
+    dispatcher.process_all_graduations(bootcamp_id, attendees); //This should panic
+    stop_cheat_caller_address(contract_address);
+    
+}

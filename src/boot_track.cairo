@@ -311,13 +311,17 @@ use super::IBootTrack;
             graduation_status
         }
 
-        fn process_all_graduations(ref self: ContractState, bootcamp_id: u256) -> bool {
+        fn process_all_graduations(ref self: ContractState, bootcamp_id: u256, mut attendees: Array<ContractAddress>) -> bool {
             let caller = get_caller_address();
             let bootcamp = self.bootcamps.entry(bootcamp_id).read();
 
-            assert(bootcamp.organizer == caller, 'Only organizer can process');
+            assert_eq!(bootcamp.organizer, caller, "Only organizer can process graduation");
 
             //Batch process the attendees
+            while !attendees.is_empty() {
+                let attendee = attendees.pop_front().unwrap();
+                self.process_graduation(bootcamp_id, attendee);
+            }
 
             true
 

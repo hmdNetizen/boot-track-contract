@@ -18,7 +18,7 @@ pub trait IBootTrack<TContractState> {
 
     // Graduation Function Signatures
     fn process_graduation(ref self: TContractState, bootcamp_id: u256, attendee: ContractAddress) -> u8;
-    fn process_all_graduations(ref self: TContractState, bootcamp_id: u256) -> bool;
+    fn process_all_graduations(ref self: TContractState, bootcamp_id: u256, attendees: Array<ContractAddress>) -> bool;
 
     // Query Functions
     fn get_attendee_stats(self: @TContractState, bootcamp_id: u256, attendee: ContractAddress) -> (u8, u16, u8, u8);
