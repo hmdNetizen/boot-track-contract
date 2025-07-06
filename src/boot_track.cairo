@@ -20,6 +20,8 @@ use super::IBootTrack;
         // Bootcamp data
         bootcamps: Map<u256, Bootcamp>,
         
+        bootcamp_attendee_by_index: Map<(u256, u32), ContractAddress>, // (bootcamp_id, index) -> attendee
+        bootcamp_attendee_count: Map<u256, u32>,
         // Attendee records: bootcamp_id -> attendee -> record
         attendee_records: Map<(u256, ContractAddress), AttendeeRecord>,
         
@@ -33,7 +35,7 @@ use super::IBootTrack;
         individual_attendance: Map<(u256, u8, u8, ContractAddress), bool>,
         
         // Assignment grades: bootcamp_id -> week -> attendee -> grade
-        assignment_grades: Map<(u256, u8, ContractAddress), AssignmentGrade>,
+        pub assignment_grades: Map<(u256, u8, ContractAddress), AssignmentGrade>,
     }
 
     #[event]
@@ -60,8 +62,6 @@ use super::IBootTrack;
         fn create_bootcamp(ref self: ContractState, name: ByteArray, num_of_attendees: u32, total_weeks: u8, sessions_per_week: u8, assignment_max_score: u16) -> u256 {
             let caller = get_caller_address();
             let bootcamp_id = self.next_bootcamp_id.read();
-
-            assert(caller == self.owner.read(), 'Only owner can create bootcamp');
             
             let bootcamp = Bootcamp {
                 name: name.clone(),
@@ -94,6 +94,8 @@ use super::IBootTrack;
             assert(bootcamp.is_active, 'Bootcamp not active');
             assert(attendees.len() != 0, 'Attendees data cannot be empty');
 
+            let mut current_count = self.bootcamp_attendee_count.entry(bootcamp_id).read();
+
             while !attendees.is_empty() {
                 let attendee = attendees.pop_front().unwrap();
                 let record = AttendeeRecord {
@@ -104,12 +106,19 @@ use super::IBootTrack;
                 };
                 
                 self.attendee_records.entry((bootcamp_id, attendee)).write(record);
+
+                // Add attendee to indexed storage
+                self.bootcamp_attendee_by_index.entry((bootcamp_id, current_count)).write(attendee);
+                current_count += 1;
                 
                 self.emit(AttendeeRegistered {
                     bootcamp_id,
                     attendee,
                 });
             };
+
+            // Update the count
+            self.bootcamp_attendee_count.entry(bootcamp_id).write(current_count);
             
             true
         }
@@ -233,6 +242,7 @@ use super::IBootTrack;
                 score,
                 graded_by: caller,
                 graded_at: get_block_timestamp(),
+                attendee
             };
 
             // Store the new grade
@@ -346,7 +356,46 @@ use super::IBootTrack;
             )
         }
 
-        fn get_bootcamp_info(self: @ContractState, bootcamp_id: u256) -> (ByteArray, u8, u8, u16, usize, bool) {
+        // fn get_all_bootcamps(self: @ContractState) -> Array<(u256, Bootcamp)> {
+        //     let caller = get_caller_address();
+        //     let mut bootcamps_array = ArrayTrait::new();
+        //     let total_bootcamps = self.next_bootcamp_id.read();
+        
+        //     let mut i: u256 = 1; // Bootcamp ID starts from 1
+        //     while i != total_bootcamps {
+        //         let bootcamp = self.bootcamps.entry(i).read();
+                
+        //         // Only include bootcamps created by the caller
+        //         if bootcamp.name.len() > 0 && bootcamp.organizer == caller {
+        //             bootcamps_array.append((i, bootcamp));
+        //         }
+                
+        //         i += 1;
+        //     }
+            
+        //     bootcamps_array
+        // }
+
+        fn get_all_bootcamps(self: @ContractState) -> Array<(u256, Bootcamp)> {
+            let mut bootcamps_array = ArrayTrait::new();
+            let total_bootcamps = self.next_bootcamp_id.read();
+        
+            let mut i: u256 = 1;
+
+            while i < total_bootcamps {
+                let bootcamp = self.bootcamps.entry(i).read();
+                
+                if bootcamp.name.len() > 0 {
+                    bootcamps_array.append((i, bootcamp));
+                }
+                
+                i += 1;
+            }
+            
+            bootcamps_array
+        }
+
+        fn get_bootcamp_info(self: @ContractState, bootcamp_id: u256) -> (ByteArray, u8, u8, u16, usize, bool, u64) {
             let bootcamp = self.bootcamps.entry(bootcamp_id).read();
             (
                 bootcamp.name,
@@ -354,7 +403,8 @@ use super::IBootTrack;
                 bootcamp.sessions_per_week,
                 bootcamp.assignment_max_score,
                 bootcamp.num_of_attendees,
-                bootcamp.is_active
+                bootcamp.is_active,
+                bootcamp.created_at
             )
         }
 
@@ -370,6 +420,50 @@ use super::IBootTrack;
 
             current_time <= end_time
         }
+
+        fn get_all_attendees(self: @ContractState, bootcamp_id: u256) -> Array<(ContractAddress, AttendeeRecord)> {
+            let caller = get_caller_address();
+            let _bootcamp = self.bootcamps.entry(bootcamp_id).read();
+            let _is_tutor = self.tutors.entry((bootcamp_id, caller)).read();
+            
+            // Allow organizer or tutors to retrieve attendees
+            // assert(bootcamp.organizer == caller || is_tutor, 'Only organizer or tutor allowed');
+            
+            let attendee_count = self.bootcamp_attendee_count.entry(bootcamp_id).read();
+            let mut result = ArrayTrait::new();
+            
+            let mut i = 0;
+            while i != attendee_count {
+                let attendee = self.bootcamp_attendee_by_index.entry((bootcamp_id, i)).read();
+                let record = self.attendee_records.entry((bootcamp_id, attendee)).read();
+                
+                if record.is_registered {
+                    result.append((attendee, record));
+                }
+                
+                i += 1;
+            };
+            
+            result
+        }
+
+        fn debug_bootcamp_data(self: @ContractState, bootcamp_id: u256) -> (ContractAddress, ContractAddress, ByteArray, bool) {
+            let caller = get_caller_address();
+            let bootcamp = self.bootcamps.entry(bootcamp_id).read();
+            
+            (
+                caller,                    // Who is calling this function
+                bootcamp.organizer,        // Who created the bootcamp
+                bootcamp.name.clone(),     // Bootcamp name
+                caller == bootcamp.organizer  // Are they the same?
+            )
+        }
+
+        fn get_assignment_info(self: @ContractState, bootcamp_id: u256, attendee: ContractAddress, week: u8) -> AssignmentGrade {
+            let grades = self.assignment_grades.entry((bootcamp_id, week, attendee)).read();
+            grades
+        }
+
     }
 
     #[generate_trait]

@@ -1,4 +1,5 @@
 use starknet::ContractAddress;
+use crate::types::attendees::{ Bootcamp, AttendeeRecord, AssignmentGrade };
 
 #[starknet::interface]
 pub trait IBootTrack<TContractState> {
@@ -21,7 +22,11 @@ pub trait IBootTrack<TContractState> {
     fn process_all_graduations(ref self: TContractState, bootcamp_id: u256, attendees: Array<ContractAddress>) -> bool;
 
     // Query Functions
+    fn get_all_bootcamps(self: @TContractState) -> Array<(u256, Bootcamp)>;
     fn get_attendee_stats(self: @TContractState, bootcamp_id: u256, attendee: ContractAddress) -> (u8, u16, u8, u8);
-    fn get_bootcamp_info(self: @TContractState, bootcamp_id: u256) -> (ByteArray, u8, u8, u16, usize, bool);
+    fn get_all_attendees(self: @TContractState, bootcamp_id: u256) -> Array<(ContractAddress, AttendeeRecord)>;
+    fn get_bootcamp_info(self: @TContractState, bootcamp_id: u256) -> (ByteArray, u8, u8, u16, usize, bool, u64);
     fn is_attendance_open(self: @TContractState, bootcamp_id: u256,  week: u8, session_id: u8) -> bool;
+    fn debug_bootcamp_data(self: @TContractState, bootcamp_id: u256) -> (ContractAddress, ContractAddress, ByteArray, bool);
+    fn get_assignment_info(self: @TContractState, bootcamp_id: u256, attendee: ContractAddress, week: u8) -> AssignmentGrade;
 }

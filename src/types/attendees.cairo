@@ -34,4 +34,5 @@
         pub score: u16,
         pub graded_by: ContractAddress,
         pub graded_at: u64,
+        pub attendee: ContractAddress
     }
