@@ -357,7 +357,7 @@ use super::IBootTrack;
         }
 
         fn get_all_bootcamps(self: @ContractState) -> Array<(u256, Bootcamp)> {
-            //     let caller = get_caller_address();
+            let caller = get_caller_address();
 
             let mut bootcamps_array = ArrayTrait::new();
             let total_bootcamps = self.next_bootcamp_id.read();
