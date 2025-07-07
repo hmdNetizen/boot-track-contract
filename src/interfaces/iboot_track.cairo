@@ -28,5 +28,5 @@ pub trait IBootTrack<TContractState> {
     fn get_bootcamp_info(self: @TContractState, bootcamp_id: u256) -> (ByteArray, u8, u8, u16, usize, bool, u64);
     fn is_attendance_open(self: @TContractState, bootcamp_id: u256,  week: u8, session_id: u8) -> bool;
     fn debug_bootcamp_data(self: @TContractState, bootcamp_id: u256) -> (ContractAddress, ContractAddress, ByteArray, bool);
-    fn get_assignment_info(self: @TContractState, bootcamp_id: u256, attendee: ContractAddress, week: u8) -> AssignmentGrade;
+    fn get_assignment_info(self: @TContractState, bootcamp_id: u256, week: u8, attendee: ContractAddress) -> AssignmentGrade;
 }

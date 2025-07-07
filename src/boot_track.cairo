@@ -356,27 +356,9 @@ use super::IBootTrack;
             )
         }
 
-        // fn get_all_bootcamps(self: @ContractState) -> Array<(u256, Bootcamp)> {
-        //     let caller = get_caller_address();
-        //     let mut bootcamps_array = ArrayTrait::new();
-        //     let total_bootcamps = self.next_bootcamp_id.read();
-        
-        //     let mut i: u256 = 1; // Bootcamp ID starts from 1
-        //     while i != total_bootcamps {
-        //         let bootcamp = self.bootcamps.entry(i).read();
-                
-        //         // Only include bootcamps created by the caller
-        //         if bootcamp.name.len() > 0 && bootcamp.organizer == caller {
-        //             bootcamps_array.append((i, bootcamp));
-        //         }
-                
-        //         i += 1;
-        //     }
-            
-        //     bootcamps_array
-        // }
-
         fn get_all_bootcamps(self: @ContractState) -> Array<(u256, Bootcamp)> {
+            //     let caller = get_caller_address();
+
             let mut bootcamps_array = ArrayTrait::new();
             let total_bootcamps = self.next_bootcamp_id.read();
         
@@ -447,6 +429,12 @@ use super::IBootTrack;
             result
         }
 
+        fn get_assignment_info(self: @ContractState, bootcamp_id: u256, week: u8, attendee: ContractAddress) -> AssignmentGrade {
+            let grades = self.assignment_grades.entry((bootcamp_id, week, attendee)).read();
+            grades
+        }
+
+        // This was just for testing purpose
         fn debug_bootcamp_data(self: @ContractState, bootcamp_id: u256) -> (ContractAddress, ContractAddress, ByteArray, bool) {
             let caller = get_caller_address();
             let bootcamp = self.bootcamps.entry(bootcamp_id).read();
@@ -457,11 +445,6 @@ use super::IBootTrack;
                 bootcamp.name.clone(),     // Bootcamp name
                 caller == bootcamp.organizer  // Are they the same?
             )
-        }
-
-        fn get_assignment_info(self: @ContractState, bootcamp_id: u256, attendee: ContractAddress, week: u8) -> AssignmentGrade {
-            let grades = self.assignment_grades.entry((bootcamp_id, week, attendee)).read();
-            grades
         }
 
     }
