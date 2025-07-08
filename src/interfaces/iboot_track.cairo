@@ -7,6 +7,7 @@ pub trait IBootTrack<TContractState> {
     fn create_bootcamp(ref self: TContractState, name: ByteArray, num_of_attendees: u32, total_weeks: u8, sessions_per_week: u8, assignment_max_score: u16) -> u256;
     fn register_attendees(ref self: TContractState, bootcamp_id: u256, attendees: Array<ContractAddress>) -> bool;
     fn add_tutor(ref self: TContractState, bootcamp_id: u256, tutor_address: ContractAddress) -> bool;
+    fn add_multiple_tutors(ref self: TContractState, bootcamp_id: u256, tutors: Array<ContractAddress>) -> bool;
 
     // Attendance Function Signatures
     fn open_attendance(ref self: TContractState, bootcamp_id: u256, week: u8, session_id: u8, duration_minutes: u32) -> bool;
@@ -27,6 +28,7 @@ pub trait IBootTrack<TContractState> {
     fn get_all_attendees(self: @TContractState, bootcamp_id: u256) -> Array<(ContractAddress, AttendeeRecord)>;
     fn get_bootcamp_info(self: @TContractState, bootcamp_id: u256) -> (ByteArray, u8, u8, u16, usize, bool, u64);
     fn is_attendance_open(self: @TContractState, bootcamp_id: u256,  week: u8, session_id: u8) -> bool;
-    fn debug_bootcamp_data(self: @TContractState, bootcamp_id: u256) -> (ContractAddress, ContractAddress, ByteArray, bool);
+    // fn debug_bootcamp_data(self: @TContractState, bootcamp_id: u256) -> (ContractAddress, ContractAddress, ByteArray, bool);
     fn get_assignment_info(self: @TContractState, bootcamp_id: u256, week: u8, attendee: ContractAddress) -> AssignmentGrade;
+    fn get_all_tutors(self: @TContractState, bootcamp_id: u256) -> Array<ContractAddress>;
 }

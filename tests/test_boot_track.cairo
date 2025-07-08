@@ -1300,35 +1300,35 @@ fn test_process_all_graduation_only_caller() {
     stop_cheat_caller_address(contract_address);
 }
 
-#[test]
-fn test_debug_bootcamp() {
-    let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
-    let contract_address = deploy_contract("BootTrack", owner);
+// #[test]
+// fn test_debug_bootcamp() {
+//     let owner: ContractAddress = 0x123_felt252.try_into().unwrap();
+//     let contract_address = deploy_contract("BootTrack", owner);
 
-    let dispatcher = IBootTrackDispatcher { contract_address };
+//     let dispatcher = IBootTrackDispatcher { contract_address };
 
-    // First, create a bootcamp
-    start_cheat_caller_address(contract_address, owner);
-    let bootcamp_id = dispatcher.create_bootcamp(
-        "Test Bootcamp",
-        10,  // num_of_attendees
-        4,   // total_weeks
-        3,   // sessions_per_week
-        100  // assignment_max_score
-    );
+//     // First, create a bootcamp
+//     start_cheat_caller_address(contract_address, owner);
+//     let bootcamp_id = dispatcher.create_bootcamp(
+//         "Test Bootcamp",
+//         10,  // num_of_attendees
+//         4,   // total_weeks
+//         3,   // sessions_per_week
+//         100  // assignment_max_score
+//     );
     
-    // Now debug the created bootcamp
-    let (caller, organizer, name, is_same) = dispatcher.debug_bootcamp_data(bootcamp_id);
-    stop_cheat_caller_address(contract_address);
+//     // Now debug the created bootcamp
+//     let (caller, organizer, name, is_same) = dispatcher.debug_bootcamp_data(bootcamp_id);
+//     stop_cheat_caller_address(contract_address);
 
-    // Assertions to verify the data
-    assert(caller == owner, 'Caller should be owner');
-    assert(organizer == owner, 'Organizer should be owner');
-    assert(is_same, 'Must match');
-    assert(name == "Test Bootcamp", 'Name should match');
+//     // Assertions to verify the data
+//     assert(caller == owner, 'Caller should be owner');
+//     assert(organizer == owner, 'Organizer should be owner');
+//     assert(is_same, 'Must match');
+//     assert(name == "Test Bootcamp", 'Name should match');
     
-    println!("Caller: {:?}", caller);
-    println!("Organizer: {:?}", organizer);
-    println!("Name: {:?}", name);
-    println!("Addresses match: {:?}", is_same);
-}
+//     println!("Caller: {:?}", caller);
+//     println!("Organizer: {:?}", organizer);
+//     println!("Name: {:?}", name);
+//     println!("Addresses match: {:?}", is_same);
+// }

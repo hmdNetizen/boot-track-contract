@@ -27,6 +27,8 @@ use super::IBootTrack;
         
         // Tutors: bootcamp_id -> tutor -> is_tutor
         tutors: Map<(u256, ContractAddress), bool>,
+        bootcamp_tutor_by_index: Map<(u256, u32), ContractAddress>, // (bootcamp_id, index) -> tutor
+        bootcamp_tutor_count: Map<u256, u32>,
         
         // Attendance sessions: bootcamp_id -> week -> session_id -> session
         attendance_sessions: Map<(u256, u8, u8), AttendanceSession>,
@@ -35,7 +37,7 @@ use super::IBootTrack;
         individual_attendance: Map<(u256, u8, u8, ContractAddress), bool>,
         
         // Assignment grades: bootcamp_id -> week -> attendee -> grade
-        pub assignment_grades: Map<(u256, u8, ContractAddress), AssignmentGrade>,
+        assignment_grades: Map<(u256, u8, ContractAddress), AssignmentGrade>,
     }
 
     #[event]
@@ -128,7 +130,16 @@ use super::IBootTrack;
             
             assert(bootcamp.organizer == caller, 'Only organizer can add tutors');
             
+            // Checking if the tutor is already added
+            let is_already_tutor = self.tutors.entry((bootcamp_id, tutor_address)).read();
+            assert(!is_already_tutor, 'Tutor already added');
+            
             self.tutors.entry((bootcamp_id, tutor_address)).write(true);
+            
+            // Add tutor to indexed storage
+            let current_count = self.bootcamp_tutor_count.entry(bootcamp_id).read();
+            self.bootcamp_tutor_by_index.entry((bootcamp_id, current_count)).write(tutor_address);
+            self.bootcamp_tutor_count.entry(bootcamp_id).write(current_count + 1);
             
             self.emit(TutorAdded {
                 bootcamp_id,
@@ -137,6 +148,40 @@ use super::IBootTrack;
             
             true
         }
+
+        fn add_multiple_tutors(ref self: ContractState, bootcamp_id: u256, mut tutors: Array<ContractAddress>) -> bool {
+            let caller = get_caller_address();
+            let bootcamp = self.bootcamps.entry(bootcamp_id).read();
+            
+            assert(bootcamp.organizer == caller, 'Only organizer can add tutors');
+            assert(tutors.len() != 0, 'Tutors data cannot be empty');
+            
+            let mut current_count = self.bootcamp_tutor_count.entry(bootcamp_id).read();
+            
+            while !tutors.is_empty() {
+                let tutor_address = tutors.pop_front().unwrap();
+                
+                // Check if tutor is already added
+                let is_already_tutor = self.tutors.entry((bootcamp_id, tutor_address)).read();
+                if !is_already_tutor {
+                    self.tutors.entry((bootcamp_id, tutor_address)).write(true);
+                    
+                    // Add tutor to indexed storage
+                    self.bootcamp_tutor_by_index.entry((bootcamp_id, current_count)).write(tutor_address);
+                    current_count += 1;
+                    
+                    self.emit(TutorAdded {
+                        bootcamp_id,
+                        tutor: tutor_address,
+                    });
+                }
+            };
+            
+            self.bootcamp_tutor_count.entry(bootcamp_id).write(current_count);
+            
+            true
+        }
+        
         fn open_attendance(ref self: ContractState, bootcamp_id: u256, week: u8, session_id: u8, duration_minutes: u32) -> bool {
             let caller = get_caller_address();
             let bootcamp = self.bootcamps.entry(bootcamp_id).read();
@@ -357,7 +402,7 @@ use super::IBootTrack;
         }
 
         fn get_all_bootcamps(self: @ContractState) -> Array<(u256, Bootcamp)> {
-            let caller = get_caller_address();
+            let _caller = get_caller_address();
 
             let mut bootcamps_array = ArrayTrait::new();
             let total_bootcamps = self.next_bootcamp_id.read();
@@ -429,23 +474,37 @@ use super::IBootTrack;
             result
         }
 
+        fn get_all_tutors(self: @ContractState, bootcamp_id: u256) -> Array<ContractAddress> {
+            let tutor_count = self.bootcamp_tutor_count.entry(bootcamp_id).read();
+            let mut result = ArrayTrait::new();
+            
+            let mut i = 0;
+            while i != tutor_count {
+                let tutor = self.bootcamp_tutor_by_index.entry((bootcamp_id, i)).read();
+                result.append(tutor);
+                i += 1;
+            };
+            
+            result
+        }
+
         fn get_assignment_info(self: @ContractState, bootcamp_id: u256, week: u8, attendee: ContractAddress) -> AssignmentGrade {
             let grades = self.assignment_grades.entry((bootcamp_id, week, attendee)).read();
             grades
         }
 
         // This was just for testing purpose
-        fn debug_bootcamp_data(self: @ContractState, bootcamp_id: u256) -> (ContractAddress, ContractAddress, ByteArray, bool) {
-            let caller = get_caller_address();
-            let bootcamp = self.bootcamps.entry(bootcamp_id).read();
+        // fn debug_bootcamp_data(self: @ContractState, bootcamp_id: u256) -> (ContractAddress, ContractAddress, ByteArray, bool) {
+        //     let caller = get_caller_address();
+        //     let bootcamp = self.bootcamps.entry(bootcamp_id).read();
             
-            (
-                caller,                    // Who is calling this function
-                bootcamp.organizer,        // Who created the bootcamp
-                bootcamp.name.clone(),     // Bootcamp name
-                caller == bootcamp.organizer  // Are they the same?
-            )
-        }
+        //     (
+        //         caller,                    // Who is calling this function
+        //         bootcamp.organizer,        // Who created the bootcamp
+        //         bootcamp.name.clone(),     // Bootcamp name
+        //         caller == bootcamp.organizer  // Are they the same?
+        //     )
+        // }
 
     }
 
