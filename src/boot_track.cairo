@@ -161,12 +161,12 @@ use super::IBootTrack;
             while !tutors.is_empty() {
                 let tutor_address = tutors.pop_front().unwrap();
                 
-                // Check if tutor is already added
+                
                 let is_already_tutor = self.tutors.entry((bootcamp_id, tutor_address)).read();
                 if !is_already_tutor {
                     self.tutors.entry((bootcamp_id, tutor_address)).write(true);
                     
-                    // Add tutor to indexed storage
+                    
                     self.bootcamp_tutor_by_index.entry((bootcamp_id, current_count)).write(tutor_address);
                     current_count += 1;
                     
@@ -222,19 +222,16 @@ use super::IBootTrack;
             let end_time = session.opened_at + (session.duration_minutes.into() * 60);
             assert(current_time <= end_time, 'Attendance timeframe elapsed');
 
-            // Check if already marked
+            // Check if candidate has already marked attendance
             let already_attended = self.individual_attendance.entry((bootcamp_id, week, session_id, caller)).read();
             assert(!already_attended, 'Already marked attendance');
 
-            // Mark attendance
             self.individual_attendance.entry((bootcamp_id, week, session_id, caller)).write(true);
-
-            // Update attendee record
+            
             let mut updated_record = attendee_record;
             updated_record.attendance_count += 1;
             self.attendee_records.entry((bootcamp_id, caller)).write(updated_record);
 
-            // Update session count
             session.total_attendees += 1;
             self.attendance_sessions.entry((bootcamp_id, week, session_id)).write(session);
 
@@ -280,7 +277,6 @@ use super::IBootTrack;
             assert(score <= bootcamp.assignment_max_score, 'Score exceeds the maximum');
             assert(week <= bootcamp.total_weeks, 'Invalid week');
 
-            // Check if attendee has already been graded
             let existing_grade = self.assignment_grades.entry((bootcamp_id, week, attendee)).read();
 
             let grade = AssignmentGrade {
@@ -290,7 +286,6 @@ use super::IBootTrack;
                 attendee
             };
 
-            // Store the new grade
             self.assignment_grades.entry((bootcamp_id, week, attendee)).write(grade);
 
             // Update attendee's total score (remove old score, add new score)
@@ -334,16 +329,13 @@ use super::IBootTrack;
             let total_sessions = bootcamp.total_weeks * bootcamp.sessions_per_week;
 
             // Calculate attendance percentage
-            // let attendance_percentage: u8 = (attendee_record.attendance_count.into() * 100) / total_sessions.into();
             let attendance_percentage: u8 = ((attendee_record.attendance_count.into() * 100_u32) / total_sessions.into()).try_into().unwrap();
 
-            // Calculate max possible score
+            // Calculate max possible score. This accounts for the possible total score
             let max_possible_score: u16 = bootcamp.total_weeks.into() * bootcamp.assignment_max_score.into();
 
-            // Calculate score percentage
             let score_percentage = (attendee_record.total_assignment_score.into() * 100) / max_possible_score;
 
-            // Use percentage-based thresholds
             let graduation_status = if attendance_percentage < 25 {
                 0 // None
             } else if attendance_percentage >= 50 && score_percentage >= 80 { // 70% of max score
